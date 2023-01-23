@@ -3,7 +3,10 @@ package com.xadmin.usermanagement.dao;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.xadmin.usermanagement.bean.User;
 
@@ -11,14 +14,14 @@ public class UserDao {
 	
 	private String jdbcURL = "jdbc:mysql://localhost:3306/userdb?userSSL=false";
 	private String jdbcUserName = "root";
-	private String jdbcPswrd = "abc@1234";
+	private String jdbcPswrd = "Sherlocked@07";
 	private String jdbcDriver = "com.mysql.jdbc.Driver";
 	
-	private static final String INSERT_USERS_SQL = "INSERT INTO users" + "(name , email , country) VALUES" + "(? , ? , ?): ";
-	private static final String SELECT_USERS_BY_ID = "SELECT id , name , email , country FROM users WHERE id = ? ";
-	private static final String SELECT_ALL_USERS = "SELECT * FROM users";
-	private static final String DELETE_USERS_SQL = "DELETE FROM users WHERE id = ? ";
-	private static final String UPDATE_USERS_SQL = "UPDATE users SET name = ? , email = ? , country = ? WHERE id = ? ";
+	private static final String INSERT_USERS_SQL = "INSERT INTO users" + "(name , email , country) VALUES" + "(? , ? , ?); ";
+	private static final String SELECT_USERS_BY_ID = "SELECT id , name , email , country FROM users WHERE id = ?; ";
+	private static final String SELECT_ALL_USERS = "SELECT * FROM users;";
+	private static final String DELETE_USERS_SQL = "DELETE FROM users WHERE id = ?; ";
+	private static final String UPDATE_USERS_SQL = "UPDATE users SET name = ? , email = ? , country = ? WHERE id = ?; ";
 	
 	public UserDao() {
 		
@@ -39,8 +42,8 @@ public class UserDao {
 	
 	public void insertUser(User user) throws SQLException{
 		System.out.println(INSERT_USERS_SQL);
-		try { Connection connection = getConnection();
-			PreparedStatement preparedStatement = connection.prepareStatement(INSERT_USERS_SQL);
+		try (Connection connection = getConnection();
+			PreparedStatement preparedStatement = connection.prepareStatement(INSERT_USERS_SQL);){
 			preparedStatement.setString(1, user.getName());
 			preparedStatement.setString(2, user.getEmail());
 			preparedStatement.setString(3, user.getCountry());
@@ -49,6 +52,72 @@ public class UserDao {
 		} catch (SQLException e) {
 			printSQLException(e);
 		}
+	}
+	
+	public User selectUser(int id) throws SQLException {
+		User user = null;
+		try (Connection connection = getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(SELECT_USERS_BY_ID);){
+			preparedStatement.setInt(1, id);
+			System.out.println(preparedStatement);
+			ResultSet rs = preparedStatement.executeQuery();
+			
+			while(rs.next()) {
+				String name = rs.getString("name");
+				String email = rs.getString("email");
+				String country = rs.getString("country");
+				user = new User(id , name , email , country);
+			}
+		} catch (SQLException e){
+			printSQLException(e);
+		}
+		return user;
+	}
+	
+	public List<User> selectAllUsers() throws SQLException{
+		List<User> users = new ArrayList<>();
+		try (Connection connection = getConnection();
+				PreparedStatement preparedStatement = connection.prepareStatement(SELECT_ALL_USERS);){
+			System.out.println(preparedStatement);
+			ResultSet rs = preparedStatement.executeQuery();
+			
+			while(rs.next()) {
+				int id = rs.getInt("id");
+				String name = rs.getString("name");
+				String email = rs.getString("email");
+				String country = rs.getString("country");
+				users.add(new User(id , name , email , country));
+			}
+		}catch (SQLException e) {
+			printSQLException(e);
+		}
+		return users;
+	}
+	
+	public boolean updateUser(User user) throws SQLException{
+		boolean rowUpdated;
+		try (Connection connection = getConnection();
+				PreparedStatement statement = connection.prepareStatement(UPDATE_USERS_SQL);){
+			System.out.println("Updated User" + statement);
+			statement.setString(1 , user.getName());
+			statement.setString(2, user.getEmail());
+			statement.setString(3 , user.getCountry());
+			statement.setInt(4 , user.getId());
+			
+			rowUpdated = statement.executeUpdate() > 0;
+		}
+		return rowUpdated;
+	}
+	
+	public boolean deleteUser(int id) throws SQLException{
+		boolean rowDeleted;
+		try (Connection connection = getConnection();
+				PreparedStatement statement = connection.prepareStatement(DELETE_USERS_SQL);){
+			statement.setInt(1 , id);
+			
+			rowDeleted = statement.executeUpdate() > 0;
+		}
+		return rowDeleted;
 	}
 
 	private void printSQLException(SQLException e) {
